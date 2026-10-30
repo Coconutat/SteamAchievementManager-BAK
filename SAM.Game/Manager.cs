@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
+/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -29,6 +29,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Windows.Forms;
+using SAM.Localization;
 using static SAM.Game.InvariantShorthand;
 using APITypes = SAM.API.Types;
 
@@ -86,23 +87,34 @@ namespace SAM.Game
             this._GameId = gameId;
             this._SteamClient = client;
 
-            this._IconDownloader.DownloadDataCompleted += this.OnIconDownload;
+            this._MainToolStrip.Items.Add(L10n.CreateLanguageButton(this.OnLanguageChanged));
 
-            string name = this._SteamClient.SteamApps001.GetAppData((uint)this._GameId, "name");
-            if (name != null)
-            {
-                base.Text += " | " + name;
-            }
-            else
-            {
-                base.Text += " | " + this._GameId.ToString(CultureInfo.InvariantCulture);
-            }
+            L10n.Apply(this);
+            this.UpdateWindowTitle();
+
+            this._IconDownloader.DownloadDataCompleted += this.OnIconDownload;
 
             this._UserStatsReceivedCallback = client.CreateAndRegisterCallback<API.Callbacks.UserStatsReceived>();
             this._UserStatsReceivedCallback.OnRun += this.OnUserStatsReceived;
 
             //this.UserStatsStoredCallback = new API.Callback(1102, new API.Callback.CallbackFunction(this.OnUserStatsStored));
 
+            this.RefreshStats();
+        }
+
+        private void UpdateWindowTitle()
+        {
+            string name = L10n.GetAppName(this._SteamClient, (uint)this._GameId);
+            base.Text = L10n.T("Steam Achievement Manager 7.0") + " | " +
+                (name ?? this._GameId.ToString(CultureInfo.InvariantCulture));
+        }
+
+        private void OnLanguageChanged()
+        {
+            L10n.Apply(this);
+            this.UpdateWindowTitle();
+
+            // Reload the schema (and everything else) so achievement names follow the new language.
             this.RefreshStats();
         }
 
@@ -159,7 +171,7 @@ namespace SAM.Game
                 return;
             }
 
-            this._DownloadStatusLabel.Text = $"Downloading {this._IconQueue.Count} icons...";
+            this._DownloadStatusLabel.Text = L10n.T("Downloading {0} icons...", this._IconQueue.Count);
             this._DownloadStatusLabel.Visible = true;
 
             var info = this._IconQueue[0];
@@ -173,7 +185,7 @@ namespace SAM.Game
 
         private static string TranslateError(int id) => id switch
         {
-            2 => "generic error -- this usually means you don't own the game",
+            2 => L10n.T("generic error -- this usually means you don't own the game"),
             _ => _($"{id}"),
         };
 
@@ -183,6 +195,15 @@ namespace SAM.Game
             if (string.IsNullOrEmpty(name) == false)
             {
                 return name;
+            }
+
+            if (language == L10n.SteamSimplifiedChinese)
+            {
+                name = kv[L10n.SteamTraditionalChinese].AsString("");
+                if (string.IsNullOrEmpty(name) == false)
+                {
+                    return name;
+                }
             }
 
             if (language != "english")
@@ -227,7 +248,7 @@ namespace SAM.Game
                 return false;
             }
 
-            var currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
+            var currentLanguage = L10n.ResolveSteamLanguage(this._SteamClient.SteamApps008.GetCurrentGameLanguage());
 
             this._AchievementDefinitions.Clear();
             this._StatDefinitions.Clear();
@@ -368,14 +389,14 @@ namespace SAM.Game
         {
             if (param.Result != 1)
             {
-                this._GameStatusLabel.Text = $"Error while retrieving stats: {TranslateError(param.Result)}";
+                this._GameStatusLabel.Text = L10n.T("Error while retrieving stats: {0}", TranslateError(param.Result));
                 this.EnableInput();
                 return;
             }
 
             if (this.LoadUserGameStatsSchema() == false)
             {
-                this._GameStatusLabel.Text = "Failed to load schema.";
+                this._GameStatusLabel.Text = L10n.T("Failed to load schema.");
                 this.EnableInput();
                 return;
             }
@@ -386,11 +407,11 @@ namespace SAM.Game
             }
             catch (Exception e)
             {
-                this._GameStatusLabel.Text = "Error when handling achievements retrieval.";
+                this._GameStatusLabel.Text = L10n.T("Error when handling achievements retrieval.");
                 this.EnableInput();
                 MessageBox.Show(
-                    "Error when handling achievements retrieval:\n" + e,
-                    "Error",
+                    L10n.T("Error when handling achievements retrieval:\n{0}", e),
+                    L10n.T("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return;
@@ -402,17 +423,20 @@ namespace SAM.Game
             }
             catch (Exception e)
             {
-                this._GameStatusLabel.Text = "Error when handling stats retrieval.";
+                this._GameStatusLabel.Text = L10n.T("Error when handling stats retrieval.");
                 this.EnableInput();
                 MessageBox.Show(
-                    "Error when handling stats retrieval:\n" + e,
-                    "Error",
+                    L10n.T("Error when handling stats retrieval:\n{0}", e),
+                    L10n.T("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return;
             }
 
-            this._GameStatusLabel.Text = $"Retrieved {this._AchievementListView.Items.Count} achievements and {this._StatisticsDataGridView.Rows.Count} statistics.";
+            this._GameStatusLabel.Text = L10n.T(
+                "Retrieved {0} achievements and {1} statistics.",
+                this._AchievementListView.Items.Count,
+                this._StatisticsDataGridView.Rows.Count);
             this.EnableInput();
         }
 
@@ -428,11 +452,11 @@ namespace SAM.Game
             var callHandle = this._SteamClient.SteamUserStats.RequestUserStats(steamId);
             if (callHandle == API.CallHandle.Invalid)
             {
-                MessageBox.Show(this, "Failed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, L10n.T("Failed."), L10n.T("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            this._GameStatusLabel.Text = "Retrieving stat information...";
+            this._GameStatusLabel.Text = L10n.T("Retrieving stat information...");
             this.DisableInput();
         }
 
@@ -633,8 +657,8 @@ namespace SAM.Game
                 {
                     MessageBox.Show(
                         this,
-                        $"An error occurred while setting the state for {info.Id}, aborting store.",
-                        "Error",
+                        L10n.T("An error occurred while setting the state for {0}, aborting store.", info.Id),
+                        L10n.T("Error"),
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
                     return -1;
@@ -667,8 +691,8 @@ namespace SAM.Game
                     {
                         MessageBox.Show(
                             this,
-                            $"An error occurred while setting the value for {stat.Id}, aborting store.",
-                            "Error",
+                            L10n.T("An error occurred while setting the value for {0}, aborting store.", stat.Id),
+                            L10n.T("Error"),
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                         return -1;
@@ -682,8 +706,8 @@ namespace SAM.Game
                     {
                         MessageBox.Show(
                             this,
-                            $"An error occurred while setting the value for {stat.Id}, aborting store.",
-                            "Error",
+                            L10n.T("An error occurred while setting the value for {0}, aborting store.", stat.Id),
+                            L10n.T("Error"),
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                         return -1;
@@ -752,8 +776,8 @@ namespace SAM.Game
             {
                 MessageBox.Show(
                     this,
-                    "An error occurred while storing, aborting.",
-                    "Error",
+                    L10n.T("An error occurred while storing, aborting."),
+                    L10n.T("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return false;
@@ -786,8 +810,8 @@ namespace SAM.Game
 
             MessageBox.Show(
                 this,
-                $"Stored {achievements} achievements and {stats} statistics.",
-                "Information",
+                L10n.T("Stored {0} achievements and {1} statistics.", achievements, stats),
+                L10n.T("Information"),
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             this.RefreshStats();
@@ -805,13 +829,13 @@ namespace SAM.Game
             {
                 e.ThrowException = false;
                 e.Cancel = true;
-                view.Rows[e.RowIndex].ErrorText = "Stat is protected! -- you can't modify it";
+                view.Rows[e.RowIndex].ErrorText = L10n.T("Stat is protected! -- you can't modify it");
             }
             else
             {
                 e.ThrowException = false;
                 e.Cancel = true;
-                view.Rows[e.RowIndex].ErrorText = "Invalid value";
+                view.Rows[e.RowIndex].ErrorText = L10n.T("Invalid value");
             }
         }
 
@@ -829,8 +853,8 @@ namespace SAM.Game
         private void OnResetAllStats(object sender, EventArgs e)
         {
             if (MessageBox.Show(
-                "Are you absolutely sure you want to reset stats?",
-                "Warning",
+                L10n.T("Are you absolutely sure you want to reset stats?"),
+                L10n.T("Warning"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning) == DialogResult.No)
             {
@@ -838,14 +862,14 @@ namespace SAM.Game
             }
 
             bool achievementsToo = DialogResult.Yes == MessageBox.Show(
-                "Do you want to reset achievements too?",
-                "Question",
+                L10n.T("Do you want to reset achievements too?"),
+                L10n.T("Question"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Question);
 
             if (MessageBox.Show(
-                "Really really sure?",
-                "Warning",
+                L10n.T("Really really sure?"),
+                L10n.T("Warning"),
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Error) == DialogResult.No)
             {
@@ -854,7 +878,7 @@ namespace SAM.Game
 
             if (this._SteamClient.SteamUserStats.ResetAllStats(achievementsToo) == false)
             {
-                MessageBox.Show(this, "Failed.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, L10n.T("Failed."), L10n.T("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -882,8 +906,8 @@ namespace SAM.Game
             {
                 MessageBox.Show(
                     this,
-                    "Sorry, but this is a protected achievement and cannot be managed with Steam Achievement Manager.",
-                    "Error",
+                    L10n.T("Sorry, but this is a protected achievement and cannot be managed with Steam Achievement Manager."),
+                    L10n.T("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 e.NewValue = e.CurrentValue;

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <AssemblyTitle>Steam Achievement Manager Picker</AssemblyTitle>
     <Company>Gibbed</Company>
@@ -52,6 +52,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\Localization.cs" Link="Localization.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SAM.API\SAM.API.csproj" />

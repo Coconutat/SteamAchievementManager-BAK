@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
+/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -22,6 +22,7 @@
 
 using System.Globalization;
 using System.Windows.Forms;
+using SAM.Localization;
 
 namespace SAM.Picker
 {
@@ -36,7 +37,7 @@ namespace SAM.Picker
         public string Name
         {
             get => this._Name;
-            set => this._Name = value ?? "App " + this.Id.ToString(CultureInfo.InvariantCulture);
+            set => this._Name = value ?? L10n.T("App {0}", this.Id.ToString(CultureInfo.InvariantCulture));
         }
 
         public string ImageUrl;

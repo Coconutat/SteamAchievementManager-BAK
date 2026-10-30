@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
+/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -22,6 +22,7 @@
 
 using System;
 using System.Windows.Forms;
+using SAM.Localization;
 
 namespace SAM.Picker
 {
@@ -30,11 +31,13 @@ namespace SAM.Picker
         [STAThread]
         private static void Main()
         {
+            L10n.Initialize();
+
             if (API.Steam.GetInstallPath() == Application.StartupPath)
             {
                 MessageBox.Show(
-                    "This tool declines to being run from the Steam directory.",
-                    "Error",
+                    L10n.T("This tool declines to being run from the Steam directory."),
+                    L10n.T("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return;
@@ -51,17 +54,18 @@ namespace SAM.Picker
                     if (string.IsNullOrEmpty(e.Message) == false)
                     {
                         MessageBox.Show(
-                            "Steam is not running. Please start Steam then run this tool again.\n\n" +
-                            "(" + e.Message + ")",
-                            "Error",
+                            L10n.T(
+                                "Steam is not running. Please start Steam then run this tool again.\n\n({0})",
+                                e.Message),
+                            L10n.T("Error"),
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                     }
                     else
                     {
                         MessageBox.Show(
-                            "Steam is not running. Please start Steam then run this tool again.",
-                            "Error",
+                            L10n.T("Steam is not running. Please start Steam then run this tool again."),
+                            L10n.T("Error"),
                             MessageBoxButtons.OK,
                             MessageBoxIcon.Error);
                     }
@@ -70,8 +74,8 @@ namespace SAM.Picker
                 catch (DllNotFoundException)
                 {
                     MessageBox.Show(
-                        "You've caused an exceptional error!",
-                        "Error",
+                        L10n.T("You've caused an exceptional error!"),
+                        L10n.T("Error"),
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
                     return;

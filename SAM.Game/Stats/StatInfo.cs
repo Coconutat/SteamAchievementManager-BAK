@@ -1,4 +1,4 @@
-﻿/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
+/* Copyright (c) 2024 Rick (rick 'at' gibbed 'dot' us)
  *
  * This software is provided 'as-is', without any express or implied
  * warranty. In no event will the authors be held liable for any damages
@@ -20,6 +20,9 @@
  *    distribution.
  */
 
+using System.Collections.Generic;
+using SAM.Localization;
+
 namespace SAM.Game.Stats
 {
     internal abstract class StatInfo
@@ -35,11 +38,23 @@ namespace SAM.Game.Stats
         {
             get
             {
-                var flags = StatFlags.None;
-                flags |= this.IsIncrementOnly == false ? 0 : StatFlags.IncrementOnly;
-                flags |= ((this.Permission & 2) != 0) == false ? 0 : StatFlags.Protected;
-                flags |= ((this.Permission & ~2) != 0) == false ? 0 : StatFlags.UnknownPermission;
-                return flags.ToString();
+                var parts = new List<string>();
+                if (this.IsIncrementOnly == true)
+                {
+                    parts.Add(L10n.T("IncrementOnly"));
+                }
+
+                if ((this.Permission & 2) != 0)
+                {
+                    parts.Add(L10n.T("Protected"));
+                }
+
+                if ((this.Permission & ~2) != 0)
+                {
+                    parts.Add(L10n.T("UnknownPermission"));
+                }
+
+                return parts.Count == 0 ? L10n.T("None") : string.Join(", ", parts);
             }
         }
     }

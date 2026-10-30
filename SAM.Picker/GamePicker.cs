@@ -32,6 +32,7 @@ using System.Linq;
 using System.Net;
 using System.Windows.Forms;
 using System.Xml.XPath;
+using SAM.Localization;
 using static SAM.Picker.InvariantShorthand;
 using APITypes = SAM.API.Types;
 
@@ -72,10 +73,27 @@ namespace SAM.Picker
 
             this._SteamClient = client;
 
+            this._PickerToolStrip.Items.Add(L10n.CreateLanguageButton(this.OnLanguageChanged));
+
             this._AppDataChangedCallback = client.CreateAndRegisterCallback<API.Callbacks.AppDataChanged>();
             this._AppDataChangedCallback.OnRun += this.OnAppDataChanged;
 
+            L10n.Apply(this);
+
             this.AddGames();
+        }
+
+        private void OnLanguageChanged()
+        {
+            L10n.Apply(this);
+
+            // Game names come from Steam, so they have to be looked up again.
+            foreach (var game in this._Games.Values)
+            {
+                game.Name = L10n.GetAppName(this._SteamClient, game.Id);
+            }
+
+            this.RefreshGames();
         }
 
         private void OnAppDataChanged(APITypes.AppDataChanged param)
@@ -90,7 +108,7 @@ namespace SAM.Picker
                 return;
             }
 
-            game.Name = this._SteamClient.SteamApps001.GetAppData(game.Id, "name");
+            game.Name = L10n.GetAppName(this._SteamClient, game.Id);
 
             this.AddGameToLogoQueue(game);
             this.DownloadNextLogo();
@@ -98,7 +116,7 @@ namespace SAM.Picker
 
         private void DoDownloadList(object sender, DoWorkEventArgs e)
         {
-            this._PickerStatusLabel.Text = "Downloading game list...";
+            this._PickerStatusLabel.Text = L10n.T("Downloading game list...");
 
             byte[] bytes;
             using (WebClient downloader = new())
@@ -123,7 +141,7 @@ namespace SAM.Picker
                 }
             }
 
-            this._PickerStatusLabel.Text = "Checking game ownership...";
+            this._PickerStatusLabel.Text = L10n.T("Checking game ownership...");
             foreach (var kv in pairs)
             {
                 this.AddGame(kv.Key, kv.Value);
@@ -135,7 +153,7 @@ namespace SAM.Picker
             if (e.Error != null || e.Cancelled == true)
             {
                 this.AddDefaultGames();
-                MessageBox.Show(e.Error.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(e.Error.ToString(), L10n.T("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
             this.RefreshGames();
@@ -180,8 +198,10 @@ namespace SAM.Picker
             }
 
             this._GameListView.VirtualListSize = this._FilteredGames.Count;
-            this._PickerStatusLabel.Text =
-                $"Displaying {this._GameListView.Items.Count} games. Total {this._Games.Count} games.";
+            this._PickerStatusLabel.Text = L10n.T(
+                "Displaying {0} games. Total {1} games.",
+                this._GameListView.Items.Count,
+                this._Games.Count);
 
             if (this._GameListView.Items.Count > 0)
             {
@@ -328,7 +348,7 @@ namespace SAM.Picker
                     break;
                 }
 
-                this._DownloadStatusLabel.Text = $"Downloading {1 + this._LogoQueue.Count} game icons...";
+                this._DownloadStatusLabel.Text = L10n.T("Downloading {0} game icons...", 1 + this._LogoQueue.Count);
                 this._DownloadStatusLabel.Visible = true;
 
                 this._LogoWorker.RunWorkerAsync(info);
@@ -339,7 +359,7 @@ namespace SAM.Picker
         {
             string candidate;
 
-            var currentLanguage = this._SteamClient.SteamApps008.GetCurrentGameLanguage();
+            var currentLanguage = L10n.ResolveSteamLanguage(this._SteamClient.SteamApps008.GetCurrentGameLanguage());
 
             candidate = this._SteamClient.SteamApps001.GetAppData(id, _($"small_capsule/{currentLanguage}"));
             if (string.IsNullOrEmpty(candidate) == false)
@@ -412,7 +432,7 @@ namespace SAM.Picker
             }
 
             GameInfo info = new(id, type);
-            info.Name = this._SteamClient.SteamApps001.GetAppData(info.Id, "name");
+            info.Name = L10n.GetAppName(this._SteamClient, info.Id);
             this._Games.Add(id, info);
         }
 
@@ -458,8 +478,8 @@ namespace SAM.Picker
             {
                 MessageBox.Show(
                     this,
-                    "Failed to start SAM.Game.exe.",
-                    "Error",
+                    L10n.T("Failed to start SAM.Game.exe."),
+                    L10n.T("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
@@ -479,8 +499,8 @@ namespace SAM.Picker
             {
                 MessageBox.Show(
                     this,
-                    "Please enter a valid game ID.",
-                    "Error",
+                    L10n.T("Please enter a valid game ID."),
+                    L10n.T("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
                 return;
@@ -488,7 +508,7 @@ namespace SAM.Picker
 
             if (this.OwnsGame(id) == false)
             {
-                MessageBox.Show(this, "You don't own that game.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(this, L10n.T("You don't own that game."), L10n.T("Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
